@@ -1,0 +1,51 @@
+services:
+  career-agent:
+    image: ${CAREER_AGENT_IMAGE:-ghcr.io/regisx001/career-agent:latest}
+    container_name: career-agent
+    restart: unless-stopped
+
+    ports:
+      - "${PORT:-12000}:8000"
+
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+    environment:
+      # Application Paths & Storage
+      DATABASE_URL: sqlite:////app/data/career_agent.db
+      STATIC_DIR: /app/static
+      UPLOADS_DIR: /app/data/uploads
+
+      # LaTeX Compilation Mode (local XeLaTeX pre-installed inside container)
+      LATEX_SANDBOX_MODE: local
+
+      # Python Runtime Tuning
+      PYTHONUNBUFFERED: "1"
+      PYTHONOPTIMIZE: "1"
+      MALLOC_ARENA_MAX: "2"
+
+      # LLM Provider Configuration (loaded from .env if present)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL_NAME: ${OPENAI_MODEL_NAME:-deepseek-chat}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.deepseek.com}
+
+    # Persist database, generated documents, and LaTeX compilation cache
+    volumes:
+      - career-agent-data:/app/data
+      - latex-cache:/cache
+
+    mem_limit: 1024m
+
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8000/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  career-agent-data:
+    name: career-agent-data
+  latex-cache:
+    name: career-agent-latex-cache
